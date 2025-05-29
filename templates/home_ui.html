@@ -64,12 +64,17 @@
     button:hover {
       background: linear-gradient(90deg, #5372F0 60%, #fed6e3 100%);
     }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
     #result {
       margin-top: 20px;
       font-size: 1.15rem;
       color: #333;
       min-height: 40px;
       transition: color 0.2s;
+      line-height: 1.4;
     }
     .info-cards {
       display: flex;
@@ -96,6 +101,10 @@
       font-size: 1rem;
       color: #666;
     }
+    .loading {
+      color: #5372F0;
+      font-style: italic;
+    }
     @media (max-width: 500px) {
       .container {
         padding: 24px 8px;
@@ -116,8 +125,8 @@
     <h1>피부관리 조언</h1>
     <div class="subtitle">라즈베리파이 기반 음성 인식 & 날씨 정보</div>
     <div class="btn-group">
-      <button onclick="getWeather()"><i class="fas fa-cloud-sun"></i> 날씨 가져오기</button>
-      <button onclick="getVoiceCommand()"><i class="fas fa-microphone"></i> 음성 명령 실행</button>
+      <button id="weatherBtn" onclick="getWeather()"><i class="fas fa-cloud-sun"></i> 날씨 가져오기</button>
+      <button id="voiceBtn" onclick="getVoiceCommand()"><i class="fas fa-microphone"></i> 음성 명령 실행</button>
     </div>
     <div id="result">원하는 정보를 받아보세요!</div>
     <div class="info-cards">
@@ -132,38 +141,72 @@
     </div>
   </div>
   <script>
-    // 라즈베리파이 IP로 수정 필요
-    const SERVER_IP = '192.168.0.12:5000';
+    // 라즈베리파이 IP로 수정 필요 (현재는 로컬호스트)
+    const SERVER_IP = window.location.host;
 
     async function getWeather() {
+      const btn = document.getElementById('weatherBtn');
+      btn.disabled = true;
+      document.getElementById('result').innerHTML = '<span class="loading">날씨 정보를 가져오는 중...</span>';
+      
       try {
         const response = await fetch(`http://${SERVER_IP}/weather`);
         const data = await response.json();
-        document.getElementById('result').innerText = `현재 온도: ${data.temperature}°C, 습도: ${data.humidity}%`;
-        document.getElementById('temp-info').innerText = `온도: ${data.temperature}°C`;
-        document.getElementById('humid-info').innerText = `습도: ${data.humidity}%`;
-        speakText(`현재 온도는 ${data.temperature}도, 습도는 ${data.humidity}%입니다.`);
+        
+        if (data.error) {
+          document.getElementById('result').innerText = data.error;
+        } else {
+          document.getElementById('result').innerText = 
+            `${data.city} - 현재 온도: ${data.temperature}°C, 습도: ${data.humidity}%. ${data.advice}`;
+          document.getElementById('temp-info').innerText = `온도: ${data.temperature}°C`;
+          document.getElementById('humid-info').innerText = `습도: ${data.humidity}%`;
+          
+          // TTS 실행
+          speakText(`현재 온도는 ${data.temperature}도, 습도는 ${data.humidity}%입니다. ${data.advice}`);
+        }
       } catch (e) {
         document.getElementById('result').innerText = '날씨 정보를 불러올 수 없습니다.';
+        console.error('Weather fetch error:', e);
+      } finally {
+        btn.disabled = false;
       }
     }
 
     async function getVoiceCommand() {
+      const btn = document.getElementById('voiceBtn');
+      btn.disabled = true;
+      document.getElementById('result').innerHTML = '<span class="loading">음성 인식 중... 말씀해주세요!</span>';
+      
       try {
         const response = await fetch(`http://${SERVER_IP}/voice-command`);
         const data = await response.json();
-        document.getElementById('result').innerText = `음성 인식 결과: ${data.command}`;
-        speakText(`당신이 말씀하신 것은 ${data.command} 입니다.`);
+        
+        document.getElementById('result').innerText = `음성 인식: "${data.command}" - ${data.response}`;
+        
+        // 날씨 데이터가 있으면 화면 업데이트
+        if (data.weather_data) {
+          document.getElementById('temp-info').innerText = `온도: ${data.weather_data.temperature}°C`;
+          document.getElementById('humid-info').innerText = `습도: ${data.weather_data.humidity}%`;
+        }
+        
+        // TTS는 서버에서 처리됨
       } catch (e) {
         document.getElementById('result').innerText = '음성 인식에 실패했습니다.';
+        console.error('Voice command error:', e);
+      } finally {
+        btn.disabled = false;
       }
     }
 
     function speakText(text) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ko-KR';
-      window.speechSynthesis.speak(utterance);
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ko-KR';
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      }
     }
   </script>
 </body>
 </html>
+
