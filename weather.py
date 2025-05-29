@@ -2,6 +2,13 @@ import speech_recognition as sr
 import pyttsx3
 import requests
 from datetime import datetime
+from flask import Flask, jsonify, render_template
+from flask_cors import CORS
+import threading
+
+# Flask 앱 생성
+app = Flask(__name__)
+CORS(app)
 
 # ✅ TTS 엔진 초기화
 engine = pyttsx3.init()
@@ -77,9 +84,9 @@ def get_dust_advice(pm25):
     else:
         return "미세먼지가 매우 많아 외출 시 마스크 착용이 필수이며, 귀가 후 꼼꼼한 클렌징이 필요합니다."
 
-# ✅ 날씨 + 미세먼지 + 조언 통합
-def get_weather_report(lat, lon, city):
-    API_KEY = "53c8a3c7700b8b529deac9d34468ac87"  # ← 너의 OpenWeatherMap API Key
+# ✅ 날씨 + 미세먼지 + 조언 통합 (웹용 데이터 반환)
+def get_weather_data(lat, lon, city):
+    API_KEY = "53c8a3c7700b8b529deac9d34468ac87"
     weather_url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
     air_url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={API_KEY}"
 
@@ -103,46 +110,100 @@ def get_weather_report(lat, lon, city):
         # 조언 구성
         weather_advice = get_skin_advice(weather, temp, humidity)
         dust_advice = get_dust_advice(pm25)
+        combined_advice = f"{weather_advice} {dust_advice}"
 
         date_str = datetime.now().strftime("%Y년 %m월 %d일")
-        report = (
-            f"오늘은 {date_str}, {city}의 현재 기온은 {temp}도이며 날씨는 {weather}입니다. "
-            f"습도는 {humidity}%, 미세먼지 농도는 {pm25:.1f}μg/m³로 '{pm25_status}' 수준입니다. "
-            f"{weather_advice} {dust_advice}"
-        )
-        return report
+        
+        return {
+            "temperature": temp,
+            "humidity": humidity,
+            "weather": weather,
+            "pm25": pm25,
+            "pm25_status": pm25_status,
+            "advice": combined_advice,
+            "city": city,
+            "date": date_str,
+            "full_report": f"오늘은 {date_str}, {city}의 현재 기온은 {temp}도이며 날씨는 {weather}입니다. 습도는 {humidity}%, 미세먼지 농도는 {pm25:.1f}μg/m³로 '{pm25_status}' 수준입니다. {combined_advice}"
+        }
 
     except Exception as e:
-        return "날씨 정보를 가져오는 데 실패했습니다."
+        print(f"날씨 API 오류: {e}")
+        return None
 
 # ✅ 음성 명령 인식 및 처리
 def listen_for_weather_question():
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
 
-    with mic as source:
-        print("🎤 '오늘 날씨 어때?'라고 말해주세요...")
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
-
     try:
+        with mic as source:
+            print("🎤 음성 인식 중...")
+            recognizer.adjust_for_ambient_noise(source, duration=1)
+            audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
+
         command = recognizer.recognize_google(audio, language='ko-KR')
         print(f"[🎧 인식된 명령어]: {command}")
+        return command
 
-        if "날씨" in command:
-            lat, lon, city = get_location()
-            if lat is not None:
-                report = get_weather_report(lat, lon, city)
-                speak(report)
-            else:
-                speak("위치 정보를 가져오는 데 실패했습니다.")
-        else:
-            speak("죄송해요. 날씨에 대한 질문만 인식할 수 있어요.")
     except sr.UnknownValueError:
-        speak("음성을 인식하지 못했어요. 다시 말씀해주세요.")
+        return "음성을 인식하지 못했어요. 다시 말씀해주세요."
     except sr.RequestError:
-        speak("음성 인식 서버에 연결할 수 없습니다.")
+        return "음성 인식 서버에 연결할 수 없습니다."
+    except sr.WaitTimeoutError:
+        return "음성 입력 시간이 초과되었습니다."
+
+# ✅ Flask 라우트 추가
+@app.route('/')
+def index():
+    return render_template('home_ui.html')
+
+@app.route('/weather')
+def weather_api():
+    lat, lon, city = get_location()
+    if lat is not None:
+        weather_data = get_weather_data(lat, lon, city)
+        if weather_data:
+            return jsonify(weather_data)
+    
+    return jsonify({
+        "error": "날씨 정보를 가져올 수 없습니다.",
+        "temperature": "--",
+        "humidity": "--"
+    })
+
+@app.route('/voice-command')
+def voice_command():
+    command = listen_for_weather_question()
+    
+    if "날씨" in command:
+        lat, lon, city = get_location()
+        if lat is not None:
+            weather_data = get_weather_data(lat, lon, city)
+            if weather_data:
+                # TTS를 별도 스레드에서 실행 (논블로킹)
+                threading.Thread(target=speak, args=(weather_data['full_report'],)).start()
+                return jsonify({
+                    "command": command,
+                    "response": weather_data['full_report'],
+                    "weather_data": weather_data
+                })
+        
+        error_msg = "위치 정보를 가져오는 데 실패했습니다."
+        threading.Thread(target=speak, args=(error_msg,)).start()
+        return jsonify({
+            "command": command,
+            "response": error_msg
+        })
+    else:
+        response_msg = "날씨에 대한 질문을 해주세요."
+        threading.Thread(target=speak, args=(response_msg,)).start()
+        return jsonify({
+            "command": command,
+            "response": response_msg
+        })
 
 # ✅ 실행
 if __name__ == "__main__":
-    listen_for_weather_question()
+    print("🌐 피부관리 조언 시스템 웹 서버를 시작합니다...")
+    print("📱 브라우저에서 http://localhost:5000 으로 접속하세요")
+    app.run(host='0.0.0.0', port=5000, debug=True)
