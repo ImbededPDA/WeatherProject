@@ -190,7 +190,39 @@ def get_weather_data(lat, lon, city):
     except Exception as e:
         print(f"날씨 API 오류: {e}")
         return None
+def continuous_voice_listener():
+    recognizer = sr.Recognizer()
+    mic = sr.Microphone()
 
+    while True:
+        try:
+            with mic as source:
+                print("🎤 계속해서 음성 듣는 중... ('날요' 또는 '날씨')")
+                recognizer.adjust_for_ambient_noise(source, duration=1)
+                audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
+
+            command = recognizer.recognize_google(audio, language='ko-KR')
+            print(f"[🎧 인식됨]: {command}")
+
+            if "날요" in command:
+                speak("네 말씀하세요")
+            elif "날씨" in command:
+                lat, lon, city = get_location()
+                if lat is not None:
+                    weather_data = get_weather_data(lat, lon, city)
+                    if weather_data:
+                        speak(weather_data['full_report'])
+            else:
+                print("🧏‍♀️ 명령에 해당 없음")
+
+        except sr.UnknownValueError:
+            print("🙉 음성을 이해하지 못했어요")
+        except sr.WaitTimeoutError:
+            print("⌛ 음성 입력 시간 초과")
+        except sr.RequestError:
+            print("❌ 구글 음성 인식 서비스 에러")
+        except Exception as e:
+            print(f"⚠️ 오류 발생: {e}")
 def listen_for_weather_question():
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
@@ -264,4 +296,7 @@ def voice_command():
 if __name__ == "__main__":
     print("🌐 피부관리 조언 시스템 웹 서버를 시작합니다...")
     print("📱 브라우저에서 http://localhost:5000 으로 접속하세요")
+     # 🧠 음성 인식 루프 시작
+    listener_thread = threading.Thread(target=continuous_voice_listener, daemon=True)
+    listener_thread.start()
     app.run(host='0.0.0.0', port=5000, debug=True)
