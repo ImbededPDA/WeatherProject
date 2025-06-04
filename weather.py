@@ -108,6 +108,98 @@ def get_dust_advice(pm25):
         return "미세먼지가 많아 모공 막힘이 우려됩니다. 이중 세안과 진정 팩을 추천드려요."
     else:
         return "미세먼지가 매우 많아 외출 시 마스크 착용이 필수이며, 귀가 후 꼼꼼한 클렌징이 필요합니다."
+def generate_morning_routine(weather, temp, humidity, pm25):
+    routines = []
+    
+    # 날씨별 기본 루틴
+    if weather == "Clear":
+        routines.append("🌞 맑은 아침: 자외선 차단 필수! SPF50+ 선크림")
+    elif weather == "Clouds":
+        routines.append("☁️ 흐린 아침: UV차단 + 가벼운 보습")
+    elif weather == "Rain":
+        routines.append("🌂 비 오는 아침: 워터프루프 선크림 필수")
+    else:
+        routines.append("🌅 기본 아침 루틴: 클렌징 + 보습 + 자외선 차단")
+    
+    # 온도별 추가 케어
+    if temp >= 30:
+        routines.append("🧴 고온: 가벼운 수분 젤 타입 제품 사용")
+    elif temp >= 25:
+        routines.append("☀️ 따뜻한 날: 산뜻한 로션 타입 추천")
+    elif temp <= 10:
+        routines.append("❄️ 추운 날: 보습 강화 겨울용 크림")
+    else:
+        routines.append("🌤️ 선선한 날: 적당한 보습력 크림")
+    
+    # 습도별 추가 케어
+    if humidity < 40:
+        routines.append("💧 건조한 아침: 히알루론산 세럼 + 보습 미스트")
+    elif humidity > 70:
+        routines.append("🌿 습한 아침: 산뜻한 젤 타입 + 피지조절 토너")
+    else:
+        routines.append("💦 적정 습도: 수분-유분 밸런스 케어")
+    
+    # 미세먼지별 추가 케어
+    if pm25 > 50:
+        routines.append("😷 미세먼지 나쁨: 항산화 세럼 + 보호막 크림")
+    elif pm25 > 35:
+        routines.append("🛡️ 미세먼지 보통: 비타민C 세럼 추천")
+    else:
+        routines.append("🌬️ 공기 깨끗: 기본 안티에이징 케어")
+    
+    return "\n".join(routines)  # • 대신 줄바꿈으로 변경
+
+
+def generate_evening_routine(weather, temp, humidity, pm25):
+    routines = []
+    
+    # 날씨별 기본 루틴
+    if weather == "Clear":
+        routines.append("🌙 맑은 저녁: 이중 클렌징 + 보습 크림")
+    elif weather == "Clouds":
+        routines.append("☁️ 흐린 저녁: 부드러운 클렌징 + 수분 공급")
+    elif weather == "Rain":
+        routines.append("🌧️ 비 온 저녁: 깊은 클렌징 + 진정 케어")
+    else:
+        routines.append("🌃 기본 저녁 루틴: 클렌징 + 수분 공급")
+    
+    # 온도별 추가 케어
+    if temp >= 30:
+        routines.append("🔥 고온: 오일 클렌징 + 시원한 토너팩")
+    elif temp >= 25:
+        routines.append("☀️ 따뜻한 날: 폼 클렌징 + 수분 밸런싱")
+    elif temp <= 10:
+        routines.append("❄️ 추운 날: 오일 클렌징 + 고보습 크림")
+    else:
+        routines.append("🌙 선선한 날: 이중 클렌징 + 영양 크림")
+    
+    # 습도별 추가 케어
+    if humidity < 40:
+        routines.append("💧 건조함: 히알루론산 세럼 3중 보습")
+    elif humidity > 70:
+        routines.append("🌿 습함: 피지 조절 토너 + 수분 젤")
+    else:
+        routines.append("💦 적정 습도: 수분크림 + 밸런싱 에센스")
+    
+    # 미세먼지별 추가 케어
+    if pm25 > 50:
+        routines.append("😷 미세먼지 나쁨: 더블 클렌징 + 항산화 마스크")
+    elif pm25 > 35:
+        routines.append("✨ 미세먼지 보통: 딥 클렌징 + 보호 크림")
+    else:
+        routines.append("🌬️ 공기 깨끗: 기본 클렌징 + 수분 팩")
+    
+    return "\n".join(routines)
+def get_routine_advice():
+    period = get_time_period()
+    if period == "morning":
+        return "🌞 아침 루틴: 자외선 차단제 필수, 가벼운 보습 추천!", period
+    elif period == "afternoon":
+        return "☀️ 오후 루틴: 미스트로 수분 보충, 선크림 덧바르기!", period
+    elif period == "evening":
+        return "🌙 저녁 루틴: 이중 클렌징, 고보습 크림 사용!", period
+    else:
+        return "🌃 밤 루틴: 수면팩, 진정 케어로 마무리!", period
 
 # 날씨 API 호출
 def get_weather_data(lat, lon, city):
@@ -115,22 +207,50 @@ def get_weather_data(lat, lon, city):
     weather_url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
     air_url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={API_KEY}"
     try:
-        weather = requests.get(weather_url).json()
-        air = requests.get(air_url).json()
-        temp = round(weather["main"]["temp"])
-        humidity = weather["main"]["humidity"]
-        weather_main = weather["weather"][0]["main"]
-        translated = translate_weather_to_korean(weather_main)
-        pm25 = air["list"][0]["components"]["pm2_5"]
-        status = "좋음" if pm25 < 16 else "보통" if pm25 < 36 else "나쁨" if pm25 < 76 else "매우 나쁨"
-        skin = get_skin_advice(weather_main, temp, humidity)
-        dust = get_dust_advice(pm25)
+        weather_res = requests.get(weather_url).json()
+        air_res = requests.get(air_url).json()
+
+        weather = weather_res["weather"][0]["main"]
+        temp = round(weather_res["main"]["temp"])
+        humidity = weather_res["main"]["humidity"]
+        city = weather_res["name"]
+        pm25 = air_res["list"][0]["components"]["pm2_5"]
+
+        pm25_status = (
+            "좋음" if pm25 < 16 else
+            "보통" if pm25 < 36 else
+            "나쁨" if pm25 < 76 else
+            "매우 나쁨"
+        )
+
+        weather_advice = get_skin_advice(weather, temp, humidity)
+        dust_advice = get_dust_advice(pm25)
+        combined_advice = f"{weather_advice} {dust_advice}"
+
         date_str = datetime.now().strftime("%Y년 %m월 %d일")
-        return f"{date_str}, {city}의 기온은 {temp}도, 날씨는 {translated}, 습도는 {humidity}%, 미세먼지 {pm25:.1f}μg/m³({status})입니다. {skin} {dust}"
+        routine_advice, routine_time = get_routine_advice()
+        morning_routine = generate_morning_routine(weather, temp, humidity, pm25)
+        evening_routine = generate_evening_routine(weather, temp, humidity, pm25)
+
+        return {
+            "temperature": temp,
+            "humidity": humidity,
+            "weather": weather,
+            "pm25": pm25,
+            "pm25_status": pm25_status,
+            "advice": combined_advice,
+            "city": city,
+            "date": date_str,
+            "routine_time": routine_time,
+            "routine_advice": routine_advice,
+            "morning_routine": morning_routine,
+            "evening_routine": evening_routine,
+            "full_report": f"오늘은 {date_str}, {city}의 현재 기온은 {temp}도이며 날씨는 {weather}입니다. 습도는 {humidity}%, 미세먼지 농도는 {pm25:.1f}μg/m³로 '{pm25_status}' 수준입니다. {combined_advice}"
+
+        }
     except Exception as e:
         print(f"[API 오류] {e}")
-        return "날씨 정보를 가져오는 데 실패했어요."
-
+        return None
 # 🎯 명령어 처리 함수 (공통)
 def process_voice_command():
     """음성 명령을 인식하고 처리하는 공통 함수"""
@@ -222,6 +342,19 @@ def index():
     return render_template("home_ui.html")
 
 
+@app.route('/weather')
+def weather_api():
+    lat, lon, city = get_location()
+    if lat is not None:
+        weather_data = get_weather_data(lat, lon, city)
+        if weather_data:
+            return jsonify(weather_data)
+    return jsonify({
+        "error": "날씨 정보를 가져올 수 없습니다.",
+        "temperature": "--",
+        "humidity": "--"
+    })
+    
 # 🚀 서버 실행
 if __name__ == "__main__":
     print("🌐 서버 시작: http://localhost:5000")
