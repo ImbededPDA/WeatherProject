@@ -197,14 +197,14 @@ def continuous_voice_listener():
     while True:
         try:
             with mic as source:
-                print("🎤 계속해서 음성 듣는 중... ('날요' 또는 '날씨')")
+                print("🎤 계속해서 음성 듣는 중... ('시리' 또는 '날씨')")
                 recognizer.adjust_for_ambient_noise(source, duration=1)
                 audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
 
             command = recognizer.recognize_google(audio, language='ko-KR')
             print(f"[🎧 인식됨]: {command}")
 
-            if "날요" in command:
+            if "시리" in command:
                 speak("네 말씀하세요")
             elif "날씨" in command:
                 lat, lon, city = get_location()
