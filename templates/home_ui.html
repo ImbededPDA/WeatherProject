@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <title>피부관리 조언 시스템</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Font Awesome for icons -->
+  <!-- Chart.js 추가 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <style>
     body {
@@ -16,180 +17,417 @@
       align-items: center;
       justify-content: center;
     }
-    .container {
-      background: rgba(255,255,255,0.95);
-      border-radius: 20px;
-      box-shadow: 0 8px 32px 0 rgba(31,38,135,0.15);
-      padding: 40px 32px 32px 32px;
-      max-width: 380px;
+    
+    /* 섹션 표시/숨김 기능 */
+    .page-section {
+      display: none;
+      animation: fadeIn 0.5s ease;
+    }
+    .page-section.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .main-grid {
+      display: flex;
+      gap: 48px;
+      justify-content: center;
+      align-items: center;
       width: 100%;
+      max-width: 980px;
+      padding: 40px 0;
+    }
+    .card {
+      background: rgba(255,255,255,0.95);
+      border-radius: 24px;
+      box-shadow: 0 8px 32px 0 rgba(31,38,135,0.12);
+      padding: 48px 36px 36px 36px;
+      min-width: 320px;
+      min-height: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       text-align: center;
     }
-    .container h1 {
+    .card-title {
       font-size: 2rem;
-      font-weight: 700;
-      color: #5372F0;
-      margin-bottom: 10px;
+      font-weight: 800;
+      color: #313a5b;
+      margin-bottom: 18px;
       letter-spacing: -1px;
     }
-    .subtitle {
-      color: #888;
-      font-size: 1rem;
-      margin-bottom: 30px;
+    .menu-list {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      margin-top: 16px;
     }
-    .weather-icon {
-      font-size: 3.5rem;
-      color: #f7b731;
-      margin-bottom: 10px;
+    .menu-btn {
+      background: #f4f7ff;
+      border-radius: 12px;
+      padding: 16px 0;
+      font-size: 1.08rem;
+      font-weight: 600;
+      color: #5372F0;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(83, 114, 240, 0.05);
+      transition: background 0.18s;
+      width: 180px;
+    }
+    .menu-btn:hover {
+      background: #e6ecfa;
+    }
+    
+    /* 체크리스트 스타일 */
+    .checklist-item {
+      background: #FFE6EB;
+      border-radius: 12px;
+      margin: 10px 0;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      transition: background 0.3s;
+    }
+    .checklist-item label {
+      margin-left: 10px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    input[type="checkbox"]:checked + label {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    /* 루틴 카드 스타일 */
+    .routine-card {
+      background: #D6F5F2;
+      border-radius: 20px;
+      padding: 20px;
+      margin: 15px 0;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    .routine-card:hover {
+      transform: rotate(2deg);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    .routine-card.morning { background: #F7E6FF; }
+    .routine-card.evening { background: #FFF9E6; }
+
+    /* 차트 컨테이너 */
+    #chartContainer {
+      max-width: 400px;
+      margin: 20px auto;
+    }
+
+    /* 뒤로가기 버튼 */
+    .back-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(255,255,255,0.8);
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    /* 기존 스타일들 */
+    .card-subtitle {
+      color: #888;
+      font-size: 1.08rem;
+      margin-bottom: 20px;
+      margin-top: 4px;
+      line-height: 1.5;
     }
     .btn-group {
       display: flex;
-      gap: 15px;
-      margin-bottom: 25px;
+      gap: 12px;
+      margin-bottom: 18px;
       justify-content: center;
     }
     button {
-      flex: 1;
       background: linear-gradient(90deg, #5372F0 0%, #a8edea 100%);
       color: #fff;
       border: none;
-      padding: 12px 0;
+      padding: 12px 16px;
       border-radius: 8px;
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(83, 114, 240, 0.08);
       transition: background 0.2s;
     }
     button:hover {
       background: linear-gradient(90deg, #5372F0 60%, #fed6e3 100%);
     }
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    #result {
-      margin-top: 20px;
-      font-size: 1.15rem;
-      color: #333;
-      min-height: 40px;
-      transition: color 0.2s;
-      line-height: 1.4;
-    }
     .info-cards {
       display: flex;
-      justify-content: space-between;
-      margin-top: 22px;
-      gap: 10px;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 18px;
     }
     .info-card {
       background: #f0f4ff;
       border-radius: 10px;
-      flex: 1;
-      padding: 15px 8px;
+      padding: 12px 10px;
       box-shadow: 0 1px 5px rgba(83, 114, 240, 0.05);
       display: flex;
       flex-direction: column;
       align-items: center;
+      min-width: 90px;
     }
     .info-card i {
-      font-size: 1.5rem;
-      margin-bottom: 4px;
+      font-size: 1.3rem;
+      margin-bottom: 2px;
       color: #5372F0;
     }
     .info-card span {
       font-size: 1rem;
       color: #666;
     }
+    #result {
+      margin-top: 12px;
+      font-size: 1.08rem;
+      color: #333;
+      min-height: 36px;
+      transition: color 0.2s;
+      line-height: 1.4;
+    }
     .loading {
       color: #5372F0;
       font-style: italic;
     }
-    @media (max-width: 500px) {
-      .container {
-        padding: 24px 8px;
-        max-width: 98vw;
-      }
-      .info-cards {
+    @media (max-width: 900px) {
+      .main-grid {
         flex-direction: column;
-        gap: 8px;
+        gap: 32px;
+      }
+      .card {
+        min-width: 90vw;
+        max-width: 98vw;
       }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="weather-icon">
-      <i class="fas fa-cloud-sun"></i>
-    </div>
-    <h1>피부관리 조언</h1>
-    <div class="subtitle">라즈베리파이 기반 음성 인식 & 날씨 정보</div>
-    <div class="btn-group">
-      <button id="weatherBtn" onclick="getWeather()"><i class="fas fa-cloud-sun"></i> 날씨 가져오기</button>
-      <button id="voiceBtn" onclick="getVoiceCommand()"><i class="fas fa-microphone"></i> 음성 명령 실행</button>
-    </div>
-    <div id="result">원하는 정보를 받아보세요!</div>
-    <div class="info-cards">
-      <div class="info-card">
-        <i class="fas fa-temperature-high"></i>
-        <span id="temp-info">온도: --</span>
+  <!-- 메인 메뉴 (기본으로 표시) -->
+  <div class="page-section active" id="mainMenu">
+    <div class="main-grid">
+      <div class="card">
+        <div class="card-title">피부관리 시스템</div>
+        <div class="menu-list">
+          <button class="menu-btn" onclick="showSection('checklist')">📅 데일리 체크리스트</button>
+          <button class="menu-btn" onclick="showSection('routine')">⏰ 간편 루틴</button>
+          <button class="menu-btn" onclick="showSection('dashboard')">📊 피부통계</button>
+          <button class="menu-btn" onclick="showSection('home')">🏠 홈화면</button>
+        </div>
       </div>
-      <div class="info-card">
-        <i class="fas fa-tint"></i>
-        <span id="humid-info">습도: --</span>
+      <div class="card">
+        <div class="card-title"><i class="fas fa-leaf"></i> 피부관리 조언</div>
+        <div class="card-subtitle">라즈베리파이 기반 음성 인식 &amp; 날씨 정보</div>
+        <p>왼쪽 메뉴에서 원하는 기능을 선택해보세요!</p>
       </div>
     </div>
   </div>
+
+  <!-- 체크리스트 섹션 -->
+  <div class="page-section" id="checklistSection">
+    <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
+    <div class="card">
+      <h2>📅 데일리 스킨 케어</h2>
+      <div class="checklist-item">
+        <input type="checkbox" id="cleansing">
+        <label for="cleansing">🫧 아침 클렌징 완료</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="moisturize">
+        <label for="moisturize">💧 보습 크림 도포</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="sunscreen">
+        <label for="sunscreen">☀️ 선크림 발라기</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="evening">
+        <label for="evening">🌙 저녁 스킨케어</label>
+      </div>
+    </div>
+  </div>
+
+ <!-- 루틴 섹션 -->
+<div class="page-section" id="routineSection">
+  <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
+  <div class="card">
+    <!-- 날짜 표시 영역 추가 -->
+    <div id="routine-date" style="font-size:1.08rem; color:#888; margin-bottom:10px;"></div>
+    <h2>⏰ 시간별 추천 루틴</h2>
+    <div class="routine-card morning">
+      <h3>🌞 아침 루틴</h3>
+      <p>자외선 차단 필수! SPF50+ 선크림 추천</p>
+    </div>
+    <div class="routine-card evening">
+      <h3>🌙 저녁 루틴</h3>
+      <p>보습 팩 10분 적용 후 세안</p>
+    </div>
+  </div>
+</div>
+
+
+  <!-- 대시보드 섹션 -->
+  <div class="page-section" id="dashboardSection">
+    <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
+    <div class="card">
+      <h2>📊 주간 피부 상태</h2>
+      <div id="chartContainer">
+        <canvas id="skinChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 홈 화면 섹션 -->
+  <div class="page-section" id="homeSection">
+    <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
+    <div class="card">
+      <div class="card-title"><i class="fas fa-leaf"></i> 피부관리 조언</div>
+      <div class="card-subtitle">라즈베리파이 기반 음성 인식 &amp; 날씨 정보</div>
+      <div class="btn-group">
+        <button id="weatherBtn" onclick="getWeather()"><i class="fas fa-cloud-sun"></i> 날씨 가져오기</button>
+        <button id="voiceBtn" onclick="getVoiceCommand()"><i class="fas fa-microphone"></i> 음성 명령 실행</button>
+      </div>
+      <div id="result">원하는 정보를 받아보세요!</div>
+      <div class="info-cards">
+        <div class="info-card">
+          <i class="fas fa-temperature-high"></i>
+          <span id="temp-info">온도: --</span>
+        </div>
+        <div class="info-card">
+          <i class="fas fa-tint"></i>
+          <span id="humid-info">습도: --</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // 라즈베리파이 IP로 수정 필요 (현재는 로컬호스트)
+    // 섹션 전환 함수
+    function showSection(sectionId) {
+      // 모든 섹션 숨기기
+      document.querySelectorAll('.page-section').forEach(section => {
+        section.classList.remove('active');
+      });
+
+      // 선택된 섹션 보이기
+      const targetSection = sectionId === 'main' ? 'mainMenu' : sectionId + 'Section';
+      document.getElementById(targetSection).classList.add('active');
+
+      // 차트 초기화 (피부통계 섹션일 때)
+      if (sectionId === 'dashboard') {
+        initChart();
+      }
+
+      // ⭐ 루틴 섹션 진입 시 날씨 정보 자동 갱신
+      if (sectionId === 'routine') {
+        fetchRoutineWeather();
+      }
+    }
+
+    // 루틴 섹션에서만 날씨 정보 fetch & 루틴/날짜 업데이트
+    async function fetchRoutineWeather() {
+      const dateDiv = document.getElementById('routine-date');
+      const morningCard = document.querySelector('.routine-card.morning');
+      const eveningCard = document.querySelector('.routine-card.evening');
+
+      // 로딩 표시
+      if (dateDiv) dateDiv.innerText = "날씨 정보를 불러오는 중...";
+
+      try {
+        const response = await fetch(`http://${SERVER_IP}/weather`);
+        const data = await response.json();
+
+        if (data.error) {
+          if (dateDiv) dateDiv.innerText = "날짜 정보를 불러올 수 없습니다.";
+          if (morningCard) morningCard.querySelector('p').innerText = "";
+          if (eveningCard) eveningCard.querySelector('p').innerText = "";
+        } else {
+          if (dateDiv) dateDiv.innerText = data.date;
+          if (morningCard) morningCard.querySelector('p').innerText = data.morning_routine;
+          if (eveningCard) eveningCard.querySelector('p').innerText = data.evening_routine;
+        }
+      } catch (e) {
+        if (dateDiv) dateDiv.innerText = "날짜 정보를 불러올 수 없습니다.";
+        if (morningCard) morningCard.querySelector('p').innerText = "";
+        if (eveningCard) eveningCard.querySelector('p').innerText = "";
+        console.error('Routine weather fetch error:', e);
+      }
+    }
+    
+
+    // 기존 기능들
     const SERVER_IP = window.location.host;
 
     async function getWeather() {
       const btn = document.getElementById('weatherBtn');
       btn.disabled = true;
       document.getElementById('result').innerHTML = '<span class="loading">날씨 정보를 가져오는 중...</span>';
-      
       try {
         const response = await fetch(`http://${SERVER_IP}/weather`);
         const data = await response.json();
-        
         if (data.error) {
           document.getElementById('result').innerText = data.error;
         } else {
-          document.getElementById('result').innerText = 
-            `${data.city} - 현재 온도: ${data.temperature}°C, 습도: ${data.humidity}%. ${data.advice}`;
-          document.getElementById('temp-info').innerText = `온도: ${data.temperature}°C`;
-          document.getElementById('humid-info').innerText = `습도: ${data.humidity}%`;
-          
-          // TTS 실행
-          speakText(`현재 온도는 ${data.temperature}도, 습도는 ${data.humidity}%입니다. ${data.advice}`);
-        }
-      } catch (e) {
-        document.getElementById('result').innerText = '날씨 정보를 불러올 수 없습니다.';
-        console.error('Weather fetch error:', e);
-      } finally {
-        btn.disabled = false;
-      }
+      // 기존 정보 업데이트
+      document.getElementById('result').innerText = 
+        `${data.city} - 현재 온도: ${data.temperature}°C, 습도: ${data.humidity}%. ${data.advice}`;
+      document.getElementById('temp-info').innerText = `온도: ${data.temperature}°C`;
+      document.getElementById('humid-info').innerText = `습도: ${data.humidity}%`;
+      
+      // 루틴 카드 업데이트
+      updateRoutineCards(data);
+      
+      speakText(`현재 온도는 ${data.temperature}도, 습도는 ${data.humidity}%입니다. ${data.advice}`);
     }
+  } catch (e) {
+    document.getElementById('result').innerText = '날씨 정보를 불러올 수 없습니다.';
+    console.error('Weather fetch error:', e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function updateRoutineCards(weatherData) {
+  const morningCard = document.querySelector('.routine-card.morning');
+  const eveningCard = document.querySelector('.routine-card.evening');
+  const dateDiv = document.getElementById('routine-date');
+  
+  if (morningCard) {
+    morningCard.querySelector('p').innerText = weatherData.morning_routine;
+  }
+  if (eveningCard) {
+    eveningCard.querySelector('p').innerText = weatherData.evening_routine;
+  }
+  if (dateDiv && weatherData.date) {
+    dateDiv.innerText = weatherData.date;
+  }
+}
 
     async function getVoiceCommand() {
       const btn = document.getElementById('voiceBtn');
       btn.disabled = true;
       document.getElementById('result').innerHTML = '<span class="loading">음성 인식 중... 말씀해주세요!</span>';
-      
       try {
         const response = await fetch(`http://${SERVER_IP}/voice-command`);
         const data = await response.json();
-        
         document.getElementById('result').innerText = `음성 인식: "${data.command}" - ${data.response}`;
-        
-        // 날씨 데이터가 있으면 화면 업데이트
         if (data.weather_data) {
           document.getElementById('temp-info').innerText = `온도: ${data.weather_data.temperature}°C`;
           document.getElementById('humid-info').innerText = `습도: ${data.weather_data.humidity}%`;
         }
-        
-        // TTS는 서버에서 처리됨
       } catch (e) {
         document.getElementById('result').innerText = '음성 인식에 실패했습니다.';
         console.error('Voice command error:', e);
@@ -209,4 +447,3 @@
   </script>
 </body>
 </html>
-
