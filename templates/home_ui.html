@@ -213,6 +213,21 @@
         max-width: 98vw;
       }
     }
+    /* 추가된 루틴 추천 스타일 */
+    #routine-date {
+      font-size: 1.08rem;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    #routine-advice {
+      font-size: 1.1rem;
+      color: #5372F0;
+      font-weight: 600;
+      margin-bottom: 15px;
+      padding: 8px 12px;
+      background: #f0f4ff;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
@@ -235,7 +250,6 @@
       </div>
     </div>
   </div>
-
   <!-- 체크리스트 섹션 -->
   <div class="page-section" id="checklistSection">
     <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
@@ -251,7 +265,7 @@
       </div>
       <div class="checklist-item">
         <input type="checkbox" id="sunscreen">
-        <label for="sunscreen">☀️ 선크림 발라기</label>
+        <label for="sunscreen">☀️ 선크림 바르기</label>
       </div>
       <div class="checklist-item">
         <input type="checkbox" id="evening">
@@ -259,26 +273,23 @@
       </div>
     </div>
   </div>
-
- <!-- 루틴 섹션 -->
-<div class="page-section" id="routineSection">
-  <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
-  <div class="card">
-    <!-- 날짜 표시 영역 추가 -->
-    <div id="routine-date" style="font-size:1.08rem; color:#888; margin-bottom:10px;"></div>
-    <h2>⏰ 시간별 추천 루틴</h2>
-    <div class="routine-card morning">
-      <h3>🌞 아침 루틴</h3>
-      <p>자외선 차단 필수! SPF50+ 선크림 추천</p>
-    </div>
-    <div class="routine-card evening">
-      <h3>🌙 저녁 루틴</h3>
-      <p>보습 팩 10분 적용 후 세안</p>
+  <!-- 루틴 섹션 -->
+  <div class="page-section" id="routineSection">
+    <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
+    <div class="card">
+      <div id="routine-date"></div>
+      <div id="routine-advice"></div>
+      <h2>⏰ 오늘 시간별 추천 루틴</h2>
+      <div class="routine-card morning">
+        <h3>🌞 아침 루틴</h3>
+        <p>기본 아침 루틴을 추천드려요</p>
+      </div>
+      <div class="routine-card evening">
+        <h3>🌙 저녁 루틴</h3>
+        <p>기본 저녁 루틴을 추천드려요</p>
+      </div>
     </div>
   </div>
-</div>
-
-
   <!-- 대시보드 섹션 -->
   <div class="page-section" id="dashboardSection">
     <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
@@ -289,7 +300,6 @@
       </div>
     </div>
   </div>
-
   <!-- 홈 화면 섹션 -->
   <div class="page-section" id="homeSection">
     <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
@@ -313,64 +323,51 @@
       </div>
     </div>
   </div>
-
   <script>
-    // 섹션 전환 함수
     function showSection(sectionId) {
-      // 모든 섹션 숨기기
       document.querySelectorAll('.page-section').forEach(section => {
         section.classList.remove('active');
       });
-
-      // 선택된 섹션 보이기
       const targetSection = sectionId === 'main' ? 'mainMenu' : sectionId + 'Section';
       document.getElementById(targetSection).classList.add('active');
-
-      // 차트 초기화 (피부통계 섹션일 때)
       if (sectionId === 'dashboard') {
         initChart();
       }
-
-      // ⭐ 루틴 섹션 진입 시 날씨 정보 자동 갱신
       if (sectionId === 'routine') {
         fetchRoutineWeather();
       }
     }
-
-    // 루틴 섹션에서만 날씨 정보 fetch & 루틴/날짜 업데이트
     async function fetchRoutineWeather() {
-      const dateDiv = document.getElementById('routine-date');
-      const morningCard = document.querySelector('.routine-card.morning');
-      const eveningCard = document.querySelector('.routine-card.evening');
+    const dateDiv = document.getElementById('routine-date');
+    const adviceDiv = document.getElementById('routine-advice');
+    const morningCard = document.querySelector('.routine-card.morning');
+    const eveningCard = document.querySelector('.routine-card.evening');
 
-      // 로딩 표시
-      if (dateDiv) dateDiv.innerText = "날씨 정보를 불러오는 중...";
+    if (dateDiv) dateDiv.innerText = "⌛ 날씨 정보를 불러오는 중...";
+    if (adviceDiv) adviceDiv.innerText = "";
 
-      try {
-        const response = await fetch(`http://${SERVER_IP}/weather`);
-        const data = await response.json();
+    try {
+      const response = await fetch(`http://${SERVER_IP}/weather`);
+      const data = await response.json();
 
-        if (data.error) {
-          if (dateDiv) dateDiv.innerText = "날짜 정보를 불러올 수 없습니다.";
-          if (morningCard) morningCard.querySelector('p').innerText = "";
-          if (eveningCard) eveningCard.querySelector('p').innerText = "";
-        } else {
-          if (dateDiv) dateDiv.innerText = data.date;
-          if (morningCard) morningCard.querySelector('p').innerText = data.morning_routine;
-          if (eveningCard) eveningCard.querySelector('p').innerText = data.evening_routine;
-        }
-      } catch (e) {
-        if (dateDiv) dateDiv.innerText = "날짜 정보를 불러올 수 없습니다.";
+      if (data.error) {
+        dateDiv.innerText = "⚠️ 날짜 정보를 불러올 수 없습니다.";
+        adviceDiv.innerText = "";
         if (morningCard) morningCard.querySelector('p').innerText = "";
         if (eveningCard) eveningCard.querySelector('p').innerText = "";
-        console.error('Routine weather fetch error:', e);
+      } else {
+        dateDiv.innerText = `📅 ${data.date}`;
+        adviceDiv.innerText = data.routine_advice;
+        if (morningCard) morningCard.querySelector('p').innerText = data.morning_routine;
+        if (eveningCard) eveningCard.querySelector('p').innerText = data.evening_routine;
       }
+    } catch (e) {
+      dateDiv.innerText = "⚠️ 서버 연결에 실패했습니다.";
+      adviceDiv.innerText = "";
+      console.error('Routine weather fetch error:', e);
     }
-    
-
-    // 기존 기능들
+  }
     const SERVER_IP = window.location.host;
-
     async function getWeather() {
       const btn = document.getElementById('weatherBtn');
       btn.disabled = true;
@@ -381,41 +378,34 @@
         if (data.error) {
           document.getElementById('result').innerText = data.error;
         } else {
-      // 기존 정보 업데이트
-      document.getElementById('result').innerText = 
-        `${data.city} - 현재 온도: ${data.temperature}°C, 습도: ${data.humidity}%. ${data.advice}`;
-      document.getElementById('temp-info').innerText = `온도: ${data.temperature}°C`;
-      document.getElementById('humid-info').innerText = `습도: ${data.humidity}%`;
-      
-      // 루틴 카드 업데이트
-      updateRoutineCards(data);
-      
-      speakText(`현재 온도는 ${data.temperature}도, 습도는 ${data.humidity}%입니다. ${data.advice}`);
+          document.getElementById('result').innerText = 
+            `${data.city} - 현재 온도: ${data.temperature}°C, 습도: ${data.humidity}%. ${data.advice}`;
+          document.getElementById('temp-info').innerText = `온도: ${data.temperature}°C`;
+          document.getElementById('humid-info').innerText = `습도: ${data.humidity}%`;
+          updateRoutineCards(data);
+          speakText(`현재 온도는 ${data.temperature}도, 습도는 ${data.humidity}%입니다. ${data.advice}`);
+        }
+      } catch (e) {
+        document.getElementById('result').innerText = '날씨 정보를 불러올 수 없습니다.';
+        console.error('Weather fetch error:', e);
+      } finally {
+        btn.disabled = false;
+      }
     }
-  } catch (e) {
-    document.getElementById('result').innerText = '날씨 정보를 불러올 수 없습니다.';
-    console.error('Weather fetch error:', e);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function updateRoutineCards(weatherData) {
-  const morningCard = document.querySelector('.routine-card.morning');
-  const eveningCard = document.querySelector('.routine-card.evening');
-  const dateDiv = document.getElementById('routine-date');
-  
-  if (morningCard) {
-    morningCard.querySelector('p').innerText = weatherData.morning_routine;
-  }
-  if (eveningCard) {
-    eveningCard.querySelector('p').innerText = weatherData.evening_routine;
-  }
-  if (dateDiv && weatherData.date) {
-    dateDiv.innerText = weatherData.date;
-  }
-}
-
+    function updateRoutineCards(weatherData) {
+      const morningCard = document.querySelector('.routine-card.morning');
+      const eveningCard = document.querySelector('.routine-card.evening');
+      const dateDiv = document.getElementById('routine-date');
+      if (morningCard) {
+        morningCard.querySelector('p').innerText = weatherData.morning_routine;
+      }
+      if (eveningCard) {
+        eveningCard.querySelector('p').innerText = weatherData.evening_routine;
+      }
+      if (dateDiv && weatherData.date) {
+        dateDiv.innerText = weatherData.date;
+      }
+    }
     async function getVoiceCommand() {
       const btn = document.getElementById('voiceBtn');
       btn.disabled = true;
@@ -435,13 +425,37 @@ function updateRoutineCards(weatherData) {
         btn.disabled = false;
       }
     }
-
     function speakText(text) {
       if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'ko-KR';
         utterance.rate = 0.9;
         window.speechSynthesis.speak(utterance);
+      }
+    }
+    // 차트 초기화 함수 (예시)
+    function initChart() {
+      const ctx = document.getElementById('skinChart');
+      if (ctx && !ctx.chart) {
+        ctx.chart = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: ['건조', '지성', '민감'],
+            datasets: [{
+              data: [30, 50, 20],
+              backgroundColor: ['#FFE6EB', '#D6F5F2', '#F7E6FF'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { font: { size: 14 } }
+              }
+            }
+          }
+        });
       }
     }
   </script>
