@@ -341,7 +341,6 @@ def voice_command():
 def index():
     return render_template("home_ui.html")
 
-
 @app.route('/weather')
 def weather_api():
     lat, lon, city = get_location()
@@ -354,6 +353,88 @@ def weather_api():
         "temperature": "--",
         "humidity": "--"
     })
+def convert_routine_to_checklist(routine_text, routine_type):
+    """루틴 텍스트를 체크리스트 항목으로 변환"""
+    items = []
+    lines = routine_text.split('\n')
+    
+    for line in lines:
+        if line.strip():
+            # 각 라인을 체크리스트 항목으로 변환
+            items.append({
+                "id": f"{routine_type}_{len(items)}",
+                "text": line.strip(),
+                "completed": False,
+                "category": extract_category(line)  # 날씨/온도/습도/미세먼지 구분
+            })
+    
+    return items
+
+def extract_category(text):
+    """텍스트에서 카테고리 추출"""
+    if "날씨" in text or "맑은" in text or "비" in text or "흐린" in text:
+        return "weather"
+    elif "온도" in text or "고온" in text or "추운" in text or "따뜻한" in text:
+        return "temperature"
+    elif "습도" in text or "건조" in text or "습한" in text:
+        return "humidity"
+    elif "미세먼지" in text:
+        return "air_quality"
+    else:
+        return "general"
+
+def get_today_weather_data():
+    """날씨 데이터를 가져오는 함수"""
+    lat, lon, city = get_location()
+    if lat is not None:
+        weather_data = get_weather_data(lat, lon, city)
+        if weather_data:
+            return (
+                weather_data['weather'], 
+                weather_data['temperature'], 
+                weather_data['humidity'], 
+                weather_data['pm25']
+            )
+    # 기본값 반환
+    return "Clear", 20, 50, 30
+
+@app.route('/daily-checklist')
+def get_daily_checklist():
+    try:
+        # 수정된 함수 호출
+        lat, lon, city = get_location()
+        if lat is not None:
+            weather_data = get_weather_data(lat, lon, city)
+            if weather_data:
+                weather = weather_data['weather']
+                temp = weather_data['temperature']
+                humidity = weather_data['humidity']
+                pm25 = weather_data['pm25']
+            else:
+                # 기본값 설정
+                weather, temp, humidity, pm25 = "Clear", 20, 50, 30
+        else:
+            weather, temp, humidity, pm25 = "Clear", 20, 50, 30
+        
+        # 아침/저녁 루틴을 체크리스트 항목으로 변환
+        morning_items = convert_routine_to_checklist(
+            generate_morning_routine(weather, temp, humidity, pm25), 
+            "morning"
+        )
+        evening_items = convert_routine_to_checklist(
+            generate_evening_routine(weather, temp, humidity, pm25), 
+            "evening"
+        )
+        
+        return jsonify({
+            "date": datetime.now().strftime("%Y년 %m월 %d일"),
+            "weather_info": f"{translate_weather_to_korean(weather)}, {temp}°C, 습도 {humidity}%, 미세먼지 {pm25}",
+            "morning_checklist": morning_items,
+            "evening_checklist": evening_items
+        })
+    except Exception as e:
+        print(f"체크리스트 오류: {e}")
+        return jsonify({"error": str(e)})
     
 # 🚀 서버 실행
 if __name__ == "__main__":
