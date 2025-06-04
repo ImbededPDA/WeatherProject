@@ -262,7 +262,7 @@ def weather_api():
 @app.route('/voice-command')
 def voice_command():
     command = listen_for_weather_question()
-    if "날요" in command:
+    if "시리" in command:
         speak("네 말씀하세요")
         return jsonify({
             "command": command,
