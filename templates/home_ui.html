@@ -74,7 +74,9 @@
       font-weight: 600;
       color: #5372F0;
       border: none;
+      pointer-events: auto; /* 추가 */
       cursor: pointer;
+      z-index: 10; /* 추가 */
       box-shadow: 0 2px 8px rgba(83, 114, 240, 0.05);
       transition: background 0.18s;
       width: 180px;
@@ -228,6 +230,50 @@
       background: #f0f4ff;
       border-radius: 8px;
     }
+    .checklist-group {
+  margin: 20px 0;
+}
+
+.checklist-item {
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border-left: 4px solid;
+  transition: all 0.3s ease;
+}
+
+.checklist-item.weather { border-left-color: #ffeb3b; background: #fffde7; }
+.checklist-item.temperature { border-left-color: #ff9800; background: #fff3e0; }
+.checklist-item.humidity { border-left-color: #2196f3; background: #e3f2fd; }
+.checklist-item.air_quality { border-left-color: #9c27b0; background: #f3e5f5; }
+.checklist-item.general { border-left-color: #4caf50; background: #e8f5e8; }
+
+.checklist-item.completed {
+  opacity: 0.7;
+  text-decoration: line-through;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.weather-info {
+  background: #f0f8ff;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.progress-summary {
+  text-align: center;
+  margin-top: 20px;
+  font-weight: bold;
+  color: #5372F0;
+}
+
   </style>
 </head>
 <body>
@@ -254,25 +300,27 @@
   <div class="page-section" id="checklistSection">
     <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
     <div class="card">
-      <h2>📅 데일리 스킨 케어</h2>
-      <div class="checklist-item">
-        <input type="checkbox" id="cleansing">
-        <label for="cleansing">🫧 아침 클렌징 완료</label>
+      <h2>📋 오늘의 맞춤형 스킨케어</h2>
+      <div id="weather-info" class="weather-info"></div>
+      
+      <!-- 아침 체크리스트 -->
+      <div class="checklist-group">
+        <h3>☀️ 아침 케어</h3>
+        <div id="morning-checklist"></div>
       </div>
-      <div class="checklist-item">
-        <input type="checkbox" id="moisturize">
-        <label for="moisturize">💧 보습 크림 도포</label>
+      
+      <!-- 저녁 체크리스트 -->
+      <div class="checklist-group">
+        <h3>🌙 저녁 케어</h3>
+        <div id="evening-checklist"></div>
       </div>
-      <div class="checklist-item">
-        <input type="checkbox" id="sunscreen">
-        <label for="sunscreen">☀️ 선크림 바르기</label>
-      </div>
-      <div class="checklist-item">
-        <input type="checkbox" id="evening">
-        <label for="evening">🌙 저녁 스킨케어</label>
+      
+      <div class="progress-summary">
+        <p>완료율: <span id="completion-rate">0%</span></p>
       </div>
     </div>
   </div>
+
   <!-- 루틴 섹션 -->
   <div class="page-section" id="routineSection">
     <button class="back-btn" onclick="showSection('main')">← 메인으로</button>
@@ -343,7 +391,14 @@
       if (sectionId === 'routine') {
         fetchRoutineWeather();
       }
-    }
+      if (sectionId === 'checklist') {
+    loadDailyChecklist();
+  }
+    // 실시간 시간 업데이트 시작
+    updateLiveTime();
+    setInterval(updateLiveTime, 1000);
+  }
+  
     // fetchRoutineWeather 함수 수정 (이미 구현되어 있지만 현재 루틴도 업데이트하도록)
 async function fetchRoutineWeather() {
   const dateDiv = document.getElementById('routine-date');
@@ -505,24 +560,77 @@ function updateCurrentRoutineAdvice(hour) {
   currentRoutineElement.textContent = routineText;
 }
 
-// showSection 함수 수정
-function showSection(sectionId) {
-  document.querySelectorAll('.page-section').forEach(section => {
-    section.classList.remove('active');
-  });
-  const targetSection = sectionId === 'main' ? 'mainMenu' : sectionId + 'Section';
-  document.getElementById(targetSection).classList.add('active');
-  
-  if (sectionId === 'dashboard') {
-    initChart();
-  }
-  if (sectionId === 'routine') {
-    fetchRoutineWeather();
-    // 실시간 시간 업데이트 시작
-    updateLiveTime();
-    setInterval(updateLiveTime, 1000);
+async function loadDailyChecklist() {
+  try {
+    const response = await fetch(`http://${SERVER_IP}/daily-checklist`);
+    const data = await response.json();
+    
+    // 날씨 정보 표시
+    document.getElementById('weather-info').innerHTML = 
+      `📅 ${data.date}<br>🌤️ ${data.weather_info}`;
+    
+    // 아침 체크리스트 렌더링
+    renderChecklist('morning-checklist', data.morning_checklist);
+    
+    // 저녁 체크리스트 렌더링
+    renderChecklist('evening-checklist', data.evening_checklist);
+    
+    updateCompletionRate();
+  } catch (error) {
+    console.error('체크리스트 로드 실패:', error);
   }
 }
+
+function renderChecklist(containerId, items) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  
+  items.forEach(item => {
+    const checklistItem = document.createElement('div');
+    checklistItem.className = `checklist-item ${item.category}`;
+    checklistItem.innerHTML = `
+      <label class="checkbox-container">
+        <input type="checkbox" 
+               id="${item.id}" 
+               ${item.completed ? 'checked' : ''}
+               onchange="toggleChecklistItem('${item.id}')">
+        <span class="checkmark"></span>
+        <span class="item-text">${item.text}</span>
+      </label>
+    `;
+    container.appendChild(checklistItem);
+  });
+}
+
+function toggleChecklistItem(itemId) {
+  const checkbox = document.getElementById(itemId);
+  const isCompleted = checkbox.checked;
+  
+  // 체크 상태를 로컬 스토리지에 저장
+  localStorage.setItem(itemId, isCompleted);
+  
+  // 완료율 업데이트
+  updateCompletionRate();
+  
+  // 체크된 항목에 시각적 효과 추가
+  const checklistItem = checkbox.closest('.checklist-item');
+  if (isCompleted) {
+    checklistItem.classList.add('completed');
+  } else {
+    checklistItem.classList.remove('completed');
+  }
+}
+
+function updateCompletionRate() {
+  const allCheckboxes = document.querySelectorAll('#checklistSection input[type="checkbox"]');
+  const completedCheckboxes = document.querySelectorAll('#checklistSection input[type="checkbox"]:checked');
+  
+  const rate = allCheckboxes.length > 0 ? 
+    Math.round((completedCheckboxes.length / allCheckboxes.length) * 100) : 0;
+  
+  document.getElementById('completion-rate').textContent = `${rate}%`;
+}
+
   </script>
 </body>
 </html>
