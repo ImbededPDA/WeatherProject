@@ -1,21 +1,23 @@
 import speech_recognition as sr
-import pyttsx3
+from gtts import gTTS
 import requests
 from datetime import datetime
 from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 import threading
+import subprocess
 
 app = Flask(__name__)
 CORS(app)
 
-engine = pyttsx3.init()
-engine.setProperty('rate', 150)
 
+
+# ✅ TTS 출력 (gTTS 기반)
 def speak(text):
     print(f"[📢] {text}")
-    engine.say(text)
-    engine.runAndWait()
+    tts = gTTS(text=text, lang='ko')
+    tts.save("/tmp/speech.mp3")
+    subprocess.run(["mpg321", "/tmp/speech.mp3"])
 
 def get_time_period():
     now = datetime.now()
