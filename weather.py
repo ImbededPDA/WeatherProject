@@ -1,24 +1,32 @@
 import speech_recognition as sr
-import pyttsx3
+#import pyttsx3
+import os
+from gtts import gTTS
 import requests
 from datetime import datetime
 from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 import threading
-
+import subprocess
 # Flask 앱 생성
 app = Flask(__name__)
 CORS(app)
 
 # ✅ TTS 엔진 초기화
-engine = pyttsx3.init()
-engine.setProperty('rate', 150)
-
+#engine = pyttsx3.init()
+#engine.setProperty('rate', 150)
+# ✅ TTS 출력 (gTTS 기반)
+def speak(text):
+    print(f"[📢] {text}")
+    tts = gTTS(text=text, lang='ko')
+    tts.save("/tmp/speech.mp3")
+    subprocess.run(["mpg321", "/tmp/speech.mp3"])
+"""
 def speak(text):
     print(f"[📢] {text}")
     engine.say(text)
     engine.runAndWait()
-
+"""
 # ✅ 위치 기반 위도, 경도 가져오기 (IP 기반)
 def get_location():
     try:
