@@ -1,32 +1,24 @@
 import speech_recognition as sr
-#import pyttsx3
-import os
-from gtts import gTTS
+import pyttsx3
 import requests
 from datetime import datetime
 from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 import threading
-import subprocess
+
 # Flask 앱 생성
 app = Flask(__name__)
 CORS(app)
 
 # ✅ TTS 엔진 초기화
-#engine = pyttsx3.init()
-#engine.setProperty('rate', 150)
-# ✅ TTS 출력 (gTTS 기반)
-def speak(text):
-    print(f"[📢] {text}")
-    tts = gTTS(text=text, lang='ko')
-    tts.save("/tmp/speech.mp3")
-    subprocess.run(["mpg321", "/tmp/speech.mp3"])
-"""
+engine = pyttsx3.init()
+engine.setProperty('rate', 150)
+
 def speak(text):
     print(f"[📢] {text}")
     engine.say(text)
     engine.runAndWait()
-"""
+
 # ✅ 위치 기반 위도, 경도 가져오기 (IP 기반)
 def get_location():
     try:
@@ -92,47 +84,6 @@ def get_dust_advice(pm25):
     else:
         return "미세먼지가 매우 많아 외출 시 마스크 착용이 필수이며, 귀가 후 꼼꼼한 클렌징이 필요합니다."
 
-# ✅ 시간별 루틴 생성 함수
-def generate_morning_routine(weather, temp, humidity, pm25):
-    routines = []
-    
-    # 날씨 기반
-    if weather == "Clear":
-        routines.append("🌞 자외선 차단 필수! SPF50+ 선크림 추천")
-    elif weather == "Rain":
-        routines.append("🌂 비 올 때는 산뜻한 워터프루프 선크림")
-    
-    # 온도 기반
-    if temp >= 30:
-        routines.append("🧴 가벼운 수분 젤 타입 선크림")
-    elif temp <= 10:
-        routines.append("❄️ 보습 강화 겨울용 선크림")
-    
-    # 미세먼지 기반
-    if pm25 > 35:
-        routines.append("😷 미세먼지 차단을 위한 클렌징 폼 사용")
-    
-    return " • ".join(routines) if routines else "기본 아침 루틴을 추천드려요"
-
-def generate_evening_routine(weather, temp, humidity, pm25):
-    routines = []
-    
-    # 습도 기반
-    if humidity < 40:
-        routines.append("💦 히알루론산 세럼 강화")
-    elif humidity > 70:
-        routines.append("🌿 피지 조절 토너 사용")
-    
-    # 온도 기반
-    if temp >= 25:
-        routines.append("🧼 오일 클렌징으로 모공 관리")
-    
-    # 미세먼지 기반
-    if pm25 > 50:
-        routines.append("✨ 미세먼지 제거를 위한 더블 클렌징")
-    
-    return " • ".join(routines) if routines else "기본 저녁 루틴을 추천드려요"
-
 # ✅ 날씨 + 미세먼지 + 조언 통합 (웹용 데이터 반환)
 def get_weather_data(lat, lon, city):
     API_KEY = "53c8a3c7700b8b529deac9d34468ac87"
@@ -161,10 +112,6 @@ def get_weather_data(lat, lon, city):
         dust_advice = get_dust_advice(pm25)
         combined_advice = f"{weather_advice} {dust_advice}"
 
-        # 시간별 루틴 생성
-        morning_routine = generate_morning_routine(weather, temp, humidity, pm25)
-        evening_routine = generate_evening_routine(weather, temp, humidity, pm25)
-
         date_str = datetime.now().strftime("%Y년 %m월 %d일")
         
         return {
@@ -176,8 +123,6 @@ def get_weather_data(lat, lon, city):
             "advice": combined_advice,
             "city": city,
             "date": date_str,
-            "morning_routine": morning_routine,
-            "evening_routine": evening_routine,
             "full_report": f"오늘은 {date_str}, {city}의 현재 기온은 {temp}도이며 날씨는 {weather}입니다. 습도는 {humidity}%, 미세먼지 농도는 {pm25:.1f}μg/m³로 '{pm25_status}' 수준입니다. {combined_advice}"
         }
 
@@ -261,5 +206,4 @@ def voice_command():
 if __name__ == "__main__":
     print("🌐 피부관리 조언 시스템 웹 서버를 시작합니다...")
     print("📱 브라우저에서 http://localhost:5000 으로 접속하세요")
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
+    app.run(host='0.0.0.0', port=5000, debug=True) 
