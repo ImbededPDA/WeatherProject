@@ -29,6 +29,19 @@ def get_time_period():
     else:
         return "night"
 
+def translate_weather_to_korean(weather):
+    return {
+        "Clear": "맑음",
+        "Clouds": "흐림",
+        "Rain": "비",
+        "Snow": "눈",
+        "Drizzle": "이슬비",
+        "Thunderstorm": "뇌우",
+        "Mist": "안개",
+        "Fog": "안개",
+        "Haze": "실안개"
+    }.get(weather, "알 수 없음")
+
 def get_location():
     try:
         res = requests.get("https://ipinfo.io/json")
@@ -133,6 +146,7 @@ def get_weather_data(lat, lon, city):
         air_res = requests.get(air_url).json()
 
         weather = weather_res["weather"][0]["main"]
+        translated_weather = translate_weather_to_korean(weather)
         temp = round(weather_res["main"]["temp"])
         humidity = weather_res["main"]["humidity"]
         city = weather_res["name"]
@@ -158,6 +172,7 @@ def get_weather_data(lat, lon, city):
             "temperature": temp,
             "humidity": humidity,
             "weather": weather,
+            "weather_korean": translated_weather,
             "pm25": pm25,
             "pm25_status": pm25_status,
             "advice": combined_advice,
@@ -167,7 +182,7 @@ def get_weather_data(lat, lon, city):
             "routine_advice": routine_advice,
             "morning_routine": morning_routine,
             "evening_routine": evening_routine,
-            "full_report": f"오늘은 {date_str}, {city}의 현재 기온은 {temp}도이며 날씨는 {weather}입니다. 습도는 {humidity}%, 미세먼지 농도는 {pm25:.1f}μg/m³로 '{pm25_status}' 수준입니다. {combined_advice}"
+            "full_report": f"오늘은 {date_str}, {city}의 현재 기온은 {temp}도이며 날씨는 {translated_weather}입니다. 습도는 {humidity}%, 미세먼지 농도는 {pm25:.1f}μg/m³로 '{pm25_status}' 수준입니다. {combined_advice}"
         }
 
     except Exception as e:
@@ -213,23 +228,32 @@ def weather_api():
 @app.route('/voice-command')
 def voice_command():
     command = listen_for_weather_question()
-    if "날씨" in command:
+    if "날요" in command:
+        speak("네 말씀하세요")
+        return jsonify({
+            "command": command,
+            "response": "네 말씀하세요"
+        })
+    elif "날씨" in command:
         lat, lon, city = get_location()
         if lat is not None:
             weather_data = get_weather_data(lat, lon, city)
             if weather_data:
+                threading.Thread(target=speak, args=(weather_data["full_report"],)).start()
                 return jsonify({
                     "command": command,
                     "response": weather_data['full_report'],
                     "weather_data": weather_data
                 })
         error_msg = "위치 정보를 가져오는 데 실패했습니다."
+        speak(error_msg)
         return jsonify({
             "command": command,
             "response": error_msg
         })
     else:
         response_msg = "날씨에 대한 질문을 해주세요."
+        speak(response_msg)
         return jsonify({
             "command": command,
             "response": response_msg
