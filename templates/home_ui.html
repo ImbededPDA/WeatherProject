@@ -45,7 +45,7 @@
       border-radius: 24px;
       box-shadow: 0 8px 32px 0 rgba(31,38,135,0.12);
       padding: 48px 36px 36px 36px;
-      min-width: 320px;
+      min-width: 320px; /* 320px → 420px로 증가 */
       min-height: 360px;
       display: flex;
       flex-direction: column;
@@ -53,6 +53,7 @@
       justify-content: center;
       text-align: center;
     }
+
     .card-title {
       font-size: 2rem;
       font-weight: 800;
@@ -79,7 +80,9 @@
       z-index: 10; /* 추가 */
       box-shadow: 0 2px 8px rgba(83, 114, 240, 0.05);
       transition: background 0.18s;
-      width: 180px;
+      width: 250px;
+      white-space: normal; /* 이 줄 추가 */
+      line-height: 1.3; /* 줄 간격 조정 */
     }
     .menu-btn:hover {
       background: #e6ecfa;
@@ -274,6 +277,24 @@
   color: #5372F0;
 }
 
+.weather-icon-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.weather-icon-title i {
+  font-size: 5rem; /* 아이콘 크기 */
+  color: black;
+  text-shadow: 0 2px 4px rgba(83, 114, 240, 0.2);
+}
+
+.weather-icon-title {
+  font-size: 2.2rem; /* 텍스트도 약간 크게 */
+}
+
+
   </style>
 </head>
 <body>
@@ -283,16 +304,18 @@
       <div class="card">
         <div class="card-title">피부관리 시스템</div>
         <div class="menu-list">
-          <button class="menu-btn" onclick="showSection('checklist')">📅 데일리 체크리스트</button>
-          <button class="menu-btn" onclick="showSection('routine')">⏰ 간편 루틴</button>
-          <button class="menu-btn" onclick="showSection('dashboard')">📊 피부통계</button>
-          <button class="menu-btn" onclick="showSection('home')">🏠 홈화면</button>
+          <button class="menu-btn" onclick="showSection('routine')">⏰ 데일리 시간별 추천 루틴</button>
+          <button class="menu-btn" onclick="showSection('checklist')">📅 오늘의 맞춤형<br>데일리 체크리스트</button>
+          <button class="menu-btn" onclick="showSection('home')">📢 피부관리 조언</button>
         </div>
       </div>
       <div class="card">
-        <div class="card-title"><i class="fas fa-leaf"></i> 피부관리 조언</div>
+        <div class="card-title weather-icon-title">
+          <i class="fas fa-cloud-sun"></i>
+          피부관리 조언
+        </div>        
         <div class="card-subtitle">라즈베리파이 기반 음성 인식 &amp; 날씨 정보</div>
-        <p>왼쪽 메뉴에서 원하는 기능을 선택해보세요!</p>
+        <p style="color:royalblue">왼쪽 메뉴에서 원하는 기능을 선택해보세요!</p>
       </div>
     </div>
   </div>
