@@ -15,14 +15,84 @@ CORS(app)
 is_listening_for_wakeword = True
 is_listening_for_command = False
 command_lock = threading.Lock()
+current_tts_proc = None
 
 # ✅ TTS 출력 (gTTS 기반)
 def speak(text):
+    """
+    text를 TTS(mp3)로 변환하여 재생한다.
+    재생 중 '그만'이라는 단어가 감지되면, 재생 프로세스를 중단하도록 listen_for_stopword 스레드를 띄움.
+    """
+    global current_tts_proc
+
+    # 1) mp3 파일 생성
     print(f"[📢] {text}")
     tts = gTTS(text=text, lang='ko')
-    tts.save("/tmp/speech.mp3")
-    subprocess.run(["mpg321", "/tmp/speech.mp3"])
+    mp3_path = "/tmp/speech.mp3"
+    tts.save(mp3_path)
 
+    # 2) 비동기 재생 프로세스 시작 (subprocess.Popen)
+    try:
+        # 기존 프로세스가 있으면 안전하게 종료
+        if current_tts_proc is not None and current_tts_proc.poll() is None:
+            current_tts_proc.kill()
+            current_tts_proc = None
+
+        # mpg321을 이용해 mp3 재생 (백그라운드)
+        current_tts_proc = subprocess.Popen(
+            ["mpg321", "-q", mp3_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    except Exception as e:
+        print(f"[TTS 재생 오류] {e}")
+        current_tts_proc = None
+        return
+
+    # 3) “그만” 단어 감지를 위한 별도 스레드 실행 (데몬)
+    stop_listener = threading.Thread(target=listen_for_stopword, daemon=True)
+    stop_listener.start()
+
+
+def listen_for_stopword():
+    """
+    TTS 재생 중 마이크로 “그만”이라는 단어가 감지되면, current_tts_proc을 종료한다.
+    """
+    global current_tts_proc
+
+    recognizer = sr.Recognizer()
+    mic = sr.Microphone()
+    with mic as source:
+        # 주변 소음 레벨 파악
+        recognizer.adjust_for_ambient_noise(source, duration=0.5)
+        try:
+            while True:
+                # 1) 현재 TTS가 재생 중인지 확인
+                if current_tts_proc is None or current_tts_proc.poll() is not None:
+                    # 재생이 끝났거나 중단된 상태이면 스레드 종료
+                    return
+
+                # 2) 음성 청취 (짧게)
+                audio = recognizer.listen(source, timeout=2, phrase_time_limit=3)
+                try:
+                    command = recognizer.recognize_google(audio, language='ko-KR')
+                    print(f"[종료어 감지 시도] {command}")
+                    if "그만" in command:
+                        # “그만”이 감지되면 재생 중인 프로세스 강제 종료
+                        if current_tts_proc is not None and current_tts_proc.poll() is None:
+                            print("[TTS 중단] '그만'이 감지되어 TTS 재생을 중단합니다.")
+                            current_tts_proc.kill()
+                            current_tts_proc = None
+                        return
+                except sr.UnknownValueError:
+                    # 인식 실패(무음 등) -> 계속 대기
+                    continue
+                except sr.RequestError as e:
+                    print(f"[음성 인식 오류] {e}")
+                    return
+        except Exception as e:
+            print(f"[종료어 감지 루프 오류] {e}")
+            return
 # 현재 시간대 반환
 def get_time_period():
     now = datetime.now()
@@ -213,9 +283,10 @@ def get_weather_data(lat, lon, city):
         weather = weather_res["weather"][0]["main"]
         temp = round(weather_res["main"]["temp"])
         humidity = weather_res["main"]["humidity"]
+        translated = translate_weather_to_korean(weather)
         city = weather_res["name"]
         pm25 = air_res["list"][0]["components"]["pm2_5"]
-
+        
         pm25_status = (
             "좋음" if pm25 < 16 else
             "보통" if pm25 < 36 else
@@ -231,7 +302,7 @@ def get_weather_data(lat, lon, city):
         routine_advice, routine_time = get_routine_advice()
         morning_routine = generate_morning_routine(weather, temp, humidity, pm25)
         evening_routine = generate_evening_routine(weather, temp, humidity, pm25)
-
+        
         return {
             "temperature": temp,
             "humidity": humidity,
@@ -245,7 +316,8 @@ def get_weather_data(lat, lon, city):
             "routine_advice": routine_advice,
             "morning_routine": morning_routine,
             "evening_routine": evening_routine,
-            "full_report": f"오늘은 {date_str}, {city}의 현재 기온은 {temp}도이며 날씨는 {weather}입니다. 습도는 {humidity}%, 미세먼지 농도는 {pm25:.1f}μg/m³로 '{pm25_status}' 수준입니다. {combined_advice}"
+            "translated": translated,
+            "full_report": f"오늘은 {date_str}, {city}의 현재 기온은 {temp}도이며 날씨는 {translated}입니다. 습도는 {humidity}%, 미세먼지 농도는 {pm25:.1f}μg/m³로 '{pm25_status}' 수준입니다. {combined_advice}"
 
         }
     except Exception as e:
@@ -270,11 +342,13 @@ def process_voice_command():
             if "날씨" in command:
                 lat, lon, city = get_location()
                 result = get_weather_data(lat, lon, city)
-                speak(result)
-                return {"command": command, "response": result}
-            else:
-                speak("날씨에 대한 질문을 해주세요.")
-                return {"command": command, "response": "날씨에 대한 질문을 해주세요."}
+                if result:
+                    speak(result["full_report"])  # ✅ 요약된 날씨 정보만 말하게 수정
+                    return {"command": command, "response": result["full_report"], "weather_data": result}
+                else:
+                    speak("날씨 정보를 불러올 수 없습니다.")
+                    return {"command": command, "response": "날씨 정보를 불러올 수 없습니다."}
+
                 
     except Exception as e:
         print(f"[명령어 인식 오류] {e}")
